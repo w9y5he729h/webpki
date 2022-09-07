@@ -234,7 +234,7 @@ fn presented_directory_name_matches_constraint(
     subtrees: Subtrees,
 ) -> bool {
     match subtrees {
-        Subtrees::PermittedSubtrees => name == constraint,
+        Subtrees::PermittedSubtrees => name.as_slice_less_safe() == constraint.as_slice_less_safe(),
         Subtrees::ExcludedSubtrees => true,
     }
 }
