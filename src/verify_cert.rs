@@ -51,7 +51,7 @@ pub fn build_chain(
 
     match loop_while_non_fatal_error(trust_anchors, |trust_anchor: &TrustAnchor| {
         let trust_anchor_subject = untrusted::Input::from(trust_anchor.subject);
-        if cert.issuer != trust_anchor_subject {
+        if cert.issuer.as_slice_less_safe() != trust_anchor_subject.as_slice_less_safe() {
             return Err(Error::UnknownIssuer);
         }
 
@@ -81,15 +81,17 @@ pub fn build_chain(
         let potential_issuer =
             cert::parse_cert(untrusted::Input::from(*cert_der), EndEntityOrCA::CA(&cert))?;
 
-        if potential_issuer.subject != cert.issuer {
+        if potential_issuer.subject.as_slice_less_safe() != cert.issuer.as_slice_less_safe() {
             return Err(Error::UnknownIssuer);
         }
 
         // Prevent loops; see RFC 4158 section 5.2.
         let mut prev = cert;
         loop {
-            if potential_issuer.spki.value() == prev.spki.value()
-                && potential_issuer.subject == prev.subject
+            if potential_issuer.spki.value().as_slice_less_safe()
+                == prev.spki.value().as_slice_less_safe()
+                && potential_issuer.subject.as_slice_less_safe()
+                    == prev.subject.as_slice_less_safe()
             {
                 return Err(Error::UnknownIssuer);
             }
@@ -235,8 +237,9 @@ fn check_basic_constraints(
     match (used_as_ca, is_ca, path_len_constraint) {
         (UsedAsCA::No, true, _) => Err(Error::CAUsedAsEndEntity),
         (UsedAsCA::Yes, false, _) => Err(Error::EndEntityUsedAsCA),
-        (UsedAsCA::Yes, true, Some(len)) if sub_ca_count > len =>
-            Err(Error::PathLenConstraintViolated),
+        (UsedAsCA::Yes, true, Some(len)) if sub_ca_count > len => {
+            Err(Error::PathLenConstraintViolated)
+        },
         _ => Ok(()),
     }
 }
@@ -287,7 +290,9 @@ fn check_eku(
         Some(input) => {
             loop {
                 let value = der::expect_tag_and_get_value(input, der::Tag::OID)?;
-                if value == required_eku_if_present.oid_value {
+                if value.as_slice_less_safe()
+                    == required_eku_if_present.oid_value.as_slice_less_safe()
+                {
                     input.skip_to_end();
                     break;
                 }
@@ -307,7 +312,9 @@ fn check_eku(
             // important that id-kp-OCSPSigning is explicit so that a normal
             // end-entity certificate isn't able to sign trusted OCSP responses
             // for itself or for other certificates issued by its issuing CA.
-            if required_eku_if_present.oid_value == EKU_OCSP_SIGNING.oid_value {
+            if required_eku_if_present.oid_value.as_slice_less_safe()
+                == EKU_OCSP_SIGNING.oid_value.as_slice_less_safe()
+            {
                 return Err(Error::RequiredEKUNotFound);
             }
 

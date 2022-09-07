@@ -41,18 +41,24 @@ pub struct DNSName(String);
 #[cfg(feature = "std")]
 impl DNSName {
     /// Returns a `DNSNameRef` that refers to this `DNSName`.
-    pub fn as_ref(&self) -> DNSNameRef { DNSNameRef(self.0.as_bytes()) }
+    pub fn as_ref(&self) -> DNSNameRef {
+        DNSNameRef(self.0.as_bytes())
+    }
 }
 
 #[cfg(feature = "std")]
 impl AsRef<str> for DNSName {
-    fn as_ref(&self) -> &str { self.0.as_ref() }
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
 }
 
 // Deprecated
 #[cfg(feature = "std")]
 impl From<DNSNameRef<'_>> for DNSName {
-    fn from(dns_name: DNSNameRef) -> Self { dns_name.to_owned() }
+    fn from(dns_name: DNSNameRef) -> Self {
+        dns_name.to_owned()
+    }
 }
 
 /// A reference to a DNS Name suitable for use in the TLS Server Name Indication
@@ -77,7 +83,9 @@ pub struct DNSNameRef<'a>(&'a [u8]);
 pub struct InvalidDNSNameError;
 
 impl core::fmt::Display for InvalidDNSNameError {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result { write!(f, "{:?}", self) }
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[cfg(feature = "std")]
@@ -137,7 +145,7 @@ pub fn verify_cert_dns_name(
         Err(Error::CertNotValidForName),
         &|name| {
             match name {
-                GeneralName::DNSName(presented_id) =>
+                GeneralName::DNSName(presented_id) => {
                     match presented_dns_id_matches_reference_dns_id(presented_id, dns_name) {
                         Some(true) => {
                             return NameIteration::Stop(Ok(()));
@@ -146,7 +154,8 @@ pub fn verify_cert_dns_name(
                         None => {
                             return NameIteration::Stop(Err(Error::BadDER));
                         },
-                    },
+                    }
+                },
                 _ => (),
             }
             NameIteration::KeepGoing
@@ -261,14 +270,17 @@ fn check_presented_id_conforms_to_constraints_in_subtree(
         };
 
         let matches = match (name, base) {
-            (GeneralName::DNSName(name), GeneralName::DNSName(base)) =>
-                presented_dns_id_matches_dns_id_constraint(name, base).ok_or(Error::BadDER),
+            (GeneralName::DNSName(name), GeneralName::DNSName(base)) => {
+                presented_dns_id_matches_dns_id_constraint(name, base).ok_or(Error::BadDER)
+            },
 
-            (GeneralName::DirectoryName(name), GeneralName::DirectoryName(base)) =>
-                presented_directory_name_matches_constraint(name, base, subtrees),
+            (GeneralName::DirectoryName(name), GeneralName::DirectoryName(base)) => {
+                presented_directory_name_matches_constraint(name, base, subtrees)
+            },
 
-            (GeneralName::IPAddress(name), GeneralName::IPAddress(base)) =>
-                presented_ip_address_matches_constraint(name, base),
+            (GeneralName::IPAddress(name), GeneralName::IPAddress(base)) => {
+                presented_ip_address_matches_constraint(name, base)
+            },
 
             // RFC 4280 says "If a name constraints extension that is marked as
             // critical imposes constraints on a particular name form, and an
@@ -280,7 +292,9 @@ fn check_presented_id_conforms_to_constraints_in_subtree(
             // considering whether the name constraint it critical.
             (GeneralName::Unsupported(name_tag), GeneralName::Unsupported(base_tag))
                 if name_tag == base_tag =>
-                Err(Error::NameConstraintViolation),
+            {
+                Err(Error::NameConstraintViolation)
+            },
 
             _ => Ok(false),
         };
@@ -325,7 +339,9 @@ fn presented_directory_name_matches_constraint(
     name: untrusted::Input, constraint: untrusted::Input, subtrees: Subtrees,
 ) -> Result<bool, Error> {
     match subtrees {
-        Subtrees::PermittedSubtrees => Ok(name == constraint),
+        Subtrees::PermittedSubtrees => {
+            Ok(name.as_slice_less_safe() == constraint.as_slice_less_safe())
+        },
         Subtrees::ExcludedSubtrees => Ok(true),
     }
 }

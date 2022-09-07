@@ -58,7 +58,7 @@ pub struct SignedData<'a> {
 ///     certs [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL
 /// }
 /// ```
-/// 
+///
 /// Note that this function does NOT parse the outermost `SEQUENCE` or the
 /// `certs` value.
 ///
@@ -288,7 +288,7 @@ struct AlgorithmIdentifier {
 
 impl AlgorithmIdentifier {
     fn matches_algorithm_id_value(&self, encoded: untrusted::Input) -> bool {
-        encoded == self.asn1_id_value
+        encoded.as_slice_less_safe() == self.asn1_id_value.as_slice_less_safe()
     }
 }
 
@@ -354,7 +354,9 @@ mod tests {
     macro_rules! test_verify_signed_data {
         ($fn_name:ident, $file_name:expr, $expected_result:expr) => {
             #[test]
-            fn $fn_name() { test_verify_signed_data($file_name, $expected_result); }
+            fn $fn_name() {
+                test_verify_signed_data($file_name, $expected_result);
+            }
         };
     }
 
@@ -407,38 +409,42 @@ mod tests {
     macro_rules! test_verify_signed_data_signature_outer {
         ($fn_name:ident, $file_name:expr, $expected_result:expr) => {
             #[test]
-            fn $fn_name() { test_verify_signed_data_signature_outer($file_name, $expected_result); }
+            fn $fn_name() {
+                test_verify_signed_data_signature_outer($file_name, $expected_result);
+            }
         };
     }
 
     fn test_verify_signed_data_signature_outer(file_name: &str, expected_error: Error) {
         let tsd = parse_test_signed_data(file_name);
         let signature = untrusted::Input::from(&tsd.signature);
-        assert_eq!(
-            Err(expected_error),
+        assert!(matches!(
             signature.read_all(Error::BadDER, |input| {
                 der::bit_string_with_no_unused_bits(input)
-            })
-        );
+            }),
+            Err(error) if error == expected_error,
+        ));
     }
 
     // XXX: This is testing code that is not even in this module.
     macro_rules! test_parse_spki_bad_outer {
         ($fn_name:ident, $file_name:expr, $error:expr) => {
             #[test]
-            fn $fn_name() { test_parse_spki_bad_outer($file_name, $error) }
+            fn $fn_name() {
+                test_parse_spki_bad_outer($file_name, $error)
+            }
         };
     }
 
     fn test_parse_spki_bad_outer(file_name: &str, expected_error: Error) {
         let tsd = parse_test_signed_data(file_name);
         let spki = untrusted::Input::from(&tsd.spki);
-        assert_eq!(
-            Err(expected_error),
+        assert!(matches!(
             spki.read_all(Error::BadDER, |input| {
                 der::expect_tag_and_get_value(input, der::Tag::Sequence)
-            })
-        );
+            }),
+            Err(error) if error == expected_error,
+        ));
     }
 
     // XXX: Some of the BadDER tests should have better error codes, maybe?
